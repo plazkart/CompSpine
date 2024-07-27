@@ -46,6 +46,47 @@ def getImages(path):
             subj1.t1wImg = i
     return subj1
 
+def exctractSlice(input_3D_image, output_3D_image, slice_number):
+    import itk
+
+    Dimension = 3
+    PixelType = itk.ctype("short")
+    ImageType = itk.Image[PixelType, Dimension]
+
+    inputImage = itk.imread(input_3D_image, itk.ctype('float'))
+
+    extractFilter = itk.ExtractImageFilter.New(inputImage)
+    extractFilter.SetDirectionCollapseToSubmatrix()
+
+    # set up the extraction region [one slice]
+    inputRegion = inputImage.GetBufferedRegion()
+    size = inputRegion.GetSize()
+    size[2] = 1  # we extract along z direction
+    start = inputRegion.GetIndex()
+    sliceNumber = slice_number
+    start[2] = sliceNumber
+    desiredRegion = inputRegion
+    desiredRegion.SetSize(size)
+    desiredRegion.SetIndex(start)
+
+    extractFilter.SetExtractionRegion(desiredRegion)
+    pasteFilter = itk.PasteImageFilter.New(inputImage)
+    medianFilter = itk.MedianImageFilter.New(extractFilter)
+    pasteFilter.SetSourceImage(medianFilter.GetOutput())
+    pasteFilter.SetDestinationImage(inputImage)
+    pasteFilter.SetDestinationIndex(start)
+
+    indexRadius = size
+    indexRadius[0] = 1  # radius along x
+    indexRadius[1] = 1  # radius along y
+    indexRadius[2] = 0  # radius along z
+    medianFilter.SetRadius(indexRadius)
+    medianFilter.UpdateLargestPossibleRegion()
+    medianImage = medianFilter.GetOutput()
+    pasteFilter.SetSourceRegion(medianImage.GetBufferedRegion())
+
+    itk.imwrite(pasteFilter.GetOutput(), output_3D_image)
+
 def phaseSymmetryFilter(input_image_file, output_image_file,
             wavelengths=None,
             sigma=0.55,
@@ -97,7 +138,12 @@ def simpleExample(input, output):
     median = itk.median_image_filter(image, radius=2)
     itk.imwrite(median, output)
 
-path = "C:\\Users\\user\\Documents\\DATA_for_WORK\\Datasets\\Spinal\\10159290\\images\\images"
+#path = "C:\\Users\\user\\Documents\\DATA_for_WORK\\Datasets\\Spinal\\10159290\\images\\images"
 #main(path)
 
-phaseSymmetryFilter('C:\\Users\\user\\Documents\\DATA_for_WORK\\Datasets\\Spinal\\10159290\\images\\images\\nii\\5_t1.nii', 'C:\\Users\\user\\Documents\\DATA_for_WORK\\Datasets\\Spinal\\10159290\\images\\images\\nii\\5_t1.tif')
+#phaseSymmetryFilter('C:\\Users\\user\\Documents\\DATA_for_WORK\\Datasets\\Spinal\\10159290\\images\\images\\nii\\5_t1.nii', 'C:\\Users\\user\\Documents\\DATA_for_WORK\\Datasets\\Spinal\\10159290\\images\\images\\nii\\5_t1.tif')
+
+#exctractSlice('C:\\Users\\user\\YandexDisk\\Work\\data\\openDataset\\Spinal\\my_compression\\nii\\my_compression_WIP_T2_SAG_COUNT_20240629165849_401.nii.gz',
+#'C:\\Users\\user\\YandexDisk\\Work\\data\\openDataset\\Spinal\\my_compression\\nii\\my_compression_WIP_T2_SAG_COUNT_20240629165849_401_2.nii.gz',
+ #             5)
+phaseSymmetryFilter('C:\\Users\\user\\YandexDisk\\Work\\data\\openDataset\\Spinal\\my_compression\\nii\\cropped.nii', 'C:\\Users\\user\\YandexDisk\\Work\\data\\openDataset\\Spinal\\my_compression\\nii\\cropped_2.nii')
