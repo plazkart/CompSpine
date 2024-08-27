@@ -6,6 +6,11 @@ def main(path):
 
     return None
 
+def preInitiliasize(): 
+    #install itk
+    #install itk-phasesymmetry
+    return None
+
 class subjData():
     name: str
     converted: bool
@@ -55,6 +60,7 @@ def phaseSymmetryFilter(input_image_file, output_image_file,
     import numpy as np
 
     input_image = itk.imread(input_image_file, itk.ctype('float'))
+    getImageSlice(input_image)
     boundary_condition = itk.PeriodicBoundaryCondition[type(input_image)]()
     padded = itk.fft_pad_image_filter(input_image, boundary_condition=boundary_condition)
 
@@ -92,6 +98,33 @@ def phaseSymmetryFilter(input_image_file, output_image_file,
     output_image = phase_symmetry_filter.GetOutput()
     itk.imwrite(output_image, output_image_file, True)
 
+def getImageSlice(inputImage):
+    import itk
+    
+    Dimension = 3
+    PixelType = itk.ctype("short")
+    ImageType = itk.Image[PixelType, Dimension]
+    extractFilter = itk.ExtractImageFilter.New(inputImage)
+    extractFilter.SetDirectionCollapseToSubmatrix()
+    
+    
+    # set up the extraction region [one slice]
+    inputRegion = inputImage.GetBufferedRegion()
+    size = inputRegion.GetSize()
+    size[2] = 1  # we extract along z direction
+    start = inputRegion.GetIndex()
+    sliceNumber = 7
+    start[2] = sliceNumber
+    desiredRegion = inputRegion
+    desiredRegion.SetSize(size)
+    desiredRegion.SetIndex(start)
+    
+    outputImage = extractFilter.SetExtractionRegion(desiredRegion)
+    return outputImage
+
+    #itk.imwrite(pasteFilter.GetOutput(), args.output_3D_image)
+
+
 def simpleExample(input, output):
     image = itk.imread(input)
     median = itk.median_image_filter(image, radius=2)
@@ -100,4 +133,4 @@ def simpleExample(input, output):
 path = "C:\\Users\\user\\Documents\\DATA_for_WORK\\Datasets\\Spinal\\10159290\\images\\images"
 #main(path)
 
-phaseSymmetryFilter('C:\\Users\\user\\Documents\\DATA_for_WORK\\Datasets\\Spinal\\10159290\\images\\images\\nii\\5_t1.nii', 'C:\\Users\\user\\Documents\\DATA_for_WORK\\Datasets\\Spinal\\10159290\\images\\images\\nii\\5_t1.tif')
+phaseSymmetryFilter('C:\\Users\\Admin\\YandexDisk\\Work\\data\\openDataset\\Spinal\\my_compression\\nii\\my_compression_WIP_SAG_mDIX_TSE_T2_20240629165849_501.nii.gz', 'C:\\Users\\Admin\\YandexDisk\\Work\\data\\openDataset\\Spinal\\my_compression\\nii\\my_compression_WIP_SAG_mDIX_TSE_T2_20240629165849_501.tif')
