@@ -12,6 +12,17 @@ class subjData():
     dixonImg: str
     t1wImg: str
 
+
+def plotImage(img):
+    import matplotlib.pyplot as plt
+    import itk
+
+    array = itk.array_from_image(img)
+
+    plt.gray()
+    plt.imshow(array)
+    plt.show()
+
 def convertToNifti(path):
     #this script is dedicated to convert DICOM or .mha files  to nifti
 
@@ -45,47 +56,6 @@ def getImages(path):
         if 'T1' or 't1' in i:
             subj1.t1wImg = i
     return subj1
-
-def exctractSlice(input_3D_image, output_3D_image, slice_number):
-    import itk
-
-    Dimension = 3
-    PixelType = itk.ctype("short")
-    ImageType = itk.Image[PixelType, Dimension]
-
-    inputImage = itk.imread(input_3D_image, itk.ctype('float'))
-
-    extractFilter = itk.ExtractImageFilter.New(inputImage)
-    extractFilter.SetDirectionCollapseToSubmatrix()
-
-    # set up the extraction region [one slice]
-    inputRegion = inputImage.GetBufferedRegion()
-    size = inputRegion.GetSize()
-    size[2] = 1  # we extract along z direction
-    start = inputRegion.GetIndex()
-    sliceNumber = slice_number
-    start[2] = sliceNumber
-    desiredRegion = inputRegion
-    desiredRegion.SetSize(size)
-    desiredRegion.SetIndex(start)
-
-    extractFilter.SetExtractionRegion(desiredRegion)
-    pasteFilter = itk.PasteImageFilter.New(inputImage)
-    medianFilter = itk.MedianImageFilter.New(extractFilter)
-    pasteFilter.SetSourceImage(medianFilter.GetOutput())
-    pasteFilter.SetDestinationImage(inputImage)
-    pasteFilter.SetDestinationIndex(start)
-
-    indexRadius = size
-    indexRadius[0] = 1  # radius along x
-    indexRadius[1] = 1  # radius along y
-    indexRadius[2] = 0  # radius along z
-    medianFilter.SetRadius(indexRadius)
-    medianFilter.UpdateLargestPossibleRegion()
-    medianImage = medianFilter.GetOutput()
-    pasteFilter.SetSourceRegion(medianImage.GetBufferedRegion())
-
-    itk.imwrite(pasteFilter.GetOutput(), output_3D_image)
 
 def phaseSymmetryFilter(input_image_file, output_image_file,
             wavelengths=None,
@@ -129,6 +99,7 @@ def phaseSymmetryFilter(input_image_file, output_image_file,
     phase_symmetry_filter.SetNoiseThreshold(noise_threshold)
 
     phase_symmetry_filter.Initialize()
+    phase_symmetry_filter.Update()
 
     output_image = phase_symmetry_filter.GetOutput()
     itk.imwrite(output_image, output_image_file, True)
@@ -146,4 +117,5 @@ def simpleExample(input, output):
 #exctractSlice('C:\\Users\\user\\YandexDisk\\Work\\data\\openDataset\\Spinal\\my_compression\\nii\\my_compression_WIP_T2_SAG_COUNT_20240629165849_401.nii.gz',
 #'C:\\Users\\user\\YandexDisk\\Work\\data\\openDataset\\Spinal\\my_compression\\nii\\my_compression_WIP_T2_SAG_COUNT_20240629165849_401_2.nii.gz',
  #             5)
-phaseSymmetryFilter('C:\\Users\\user\\YandexDisk\\Work\\data\\openDataset\\Spinal\\my_compression\\nii\\cropped.nii', 'C:\\Users\\user\\YandexDisk\\Work\\data\\openDataset\\Spinal\\my_compression\\nii\\cropped_2.nii')
+phaseSymmetryFilter('C:\\Users\\user\\YandexDisk\\Work\\data\\openDataset\\Spinal\\my_compression\\nii\\spine.png',
+                    'C:\\Users\\user\\YandexDisk\\Work\\data\\openDataset\\Spinal\\my_compression\\nii\\spine_2.tiff')
