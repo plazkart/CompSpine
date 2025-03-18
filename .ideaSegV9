@@ -1,0 +1,113 @@
+import nibabel as nib
+import numpy as np
+from skimage import measure, morphology
+import matplotlib.pyplot as plt
+
+def process_nifti(file_path):
+    img = nib.load(file_path)
+    data = img.get_fdata()
+    
+    # Выбор центрального среза по оси X
+    axis_size = data.shape[0]
+    slice_center = axis_size // 2
+    slice_data = data[slice_center, :, :]
+    
+    # Создание масок
+    mask_50 = (slice_data == 50).astype(np.uint8)
+    mask_high = (slice_data > 90).astype(np.uint8)
+    
+    labels = measure.label(mask_50)
+    final_mask = np.zeros_like(mask_50)
+    
+    # Поиск позвонков рядом с дисками
+    for label in np.unique(labels)[1:]:
+        region = (labels == label)
+        region_dilated = morphology.binary_dilation(region, morphology.disk(3))
+        if np.any(region_dilated & mask_high):
+            final_mask[region] = 1
+    
+    contours = measure.find_contours(final_mask, 0.5)
+    
+    # Настройка окна вывода
+    plt.figure(figsize=(10, 7))
+    plt.imshow(slice_data, cmap='gray', interpolation='nearest')
+    
+    for contour in contours:
+        # Отрисовка контура позвонков
+        plt.plot(contour[:, 1], contour[:, 0], color='red', linewidth=2)
+        
+        corners = []
+        
+        # 1. Точка с максимальным Y 
+        max_y = np.max(contour[:, 0])
+        print(max_y)
+        candidates = contour[contour[:, 0] == max_y]
+        if len(candidates) > 0:
+            idx = np.argmax(candidates[:, 1])
+            point = candidates[idx]
+            corners.append((point[1], point[0]))  # (X, Y)
+        
+        # 2. Точка с минимальным Y 
+        min_y = np.min(contour[:, 0])
+        print(min_y)
+        candidates = contour[contour[:, 0] == min_y]
+        if len(candidates) > 0:
+            idx = np.argmin(candidates[:, 1]) 
+            point = candidates[idx]
+            corners.append((point[1], point[0]))
+        
+        # 3. Точка с максимальным X 
+        max_x = np.max(contour[:, 1])
+        print(max_x)
+        candidates = contour[contour[:, 1] == max_x]
+        if len(candidates) > 0:
+            idx = np.argmin(candidates[:, 0])
+            point = candidates[idx]
+            corners.append((point[1], point[0]))
+        
+        # 4. Точка с минимальным X 
+        min_x = np.min(contour[:, 1])
+        print(min_x)
+        candidates = contour[contour[:, 1] == min_x]
+        if len(candidates) > 0:
+            idx = np.argmin(candidates[:, 0])
+            point = candidates[idx]
+            corners.append((point[1], point[0]))
+        
+        # Отрисовка углов
+        for (x_c, y_c) in corners:
+            plt.plot(x_c, y_c, 'go', markersize=8)  # Зеленые точки
+        
+        # Выбор и соединение точек
+        corners = [tuple(p) for p in corners]  # Преобразуем в кортежи для хранения в множествах
+        
+        # Найти точки с минимальным Y
+        min_y = min(p[1] for p in corners)
+        candidates = [p for p in corners if p[1] == min_y]
+        
+        if len(candidates) >= 2:
+            # Выбираем крайние по X
+            candidates_sorted = sorted(candidates, key=lambda p: p[0])
+            point_a = candidates_sorted[0]
+            point_b = candidates_sorted[-1]
+        else:
+            # Сортируем все точки по Y и берем первые две
+            sorted_corners = sorted(corners, key=lambda p: p[1])
+            point_a = sorted_corners[0]
+            point_b = sorted_corners[1]
+        
+        # Соединяем первые две точки
+        plt.plot([point_a[0], point_b[0]], [point_a[1], point_b[1]], 'b-', linewidth=2)
+        
+        # Остальные две точки
+        remaining = [p for p in corners if p not in {point_a, point_b}]
+        if len(remaining) == 2:
+            plt.plot([remaining[0][0], remaining[1][0]], 
+                     [remaining[0][1], remaining[1][1]], 
+                     'b-', linewidth=2)
+    
+    plt.title(f'Срез по оси X (срез {slice_center})')
+    plt.show()
+
+image_path = "E:\\Programs\\Python\\Spin\\Исследования\\viktorov\\viktorov\\DICOM\\Convert\\step1_output\\DICOM_T2W_TSE_SAG_20241005092548_501.nii.gz"
+process_nifti(image_path)
